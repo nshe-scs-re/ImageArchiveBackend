@@ -1,6 +1,13 @@
-@ImageProjectBackend_HostAddress = http://localhost:5084
+@ImageProjectBackend_HostAddress = http://localhost:5084/api
 
-GET {{ImageProjectBackend_HostAddress}}/
-Accept: application/json
+GET {{ImageProjectBackend_HostAddress}}/images/zip
+Accept: application/zip
 
 ###
+GET {{ImageProjectBackend_HostAddress}}/images/zip?startDate=2010-01-01T00:00:00&endDate=2023-06-30T23:59:59
+Accept: application/zip
+
+
+###
+GET {{ImageProjectBackend_HostAddress}}/
+Accept: application/json
