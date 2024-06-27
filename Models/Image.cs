@@ -13,6 +13,5 @@ namespace ImageProjectBackend.Models
         public string? FilePath { get; set; }
         public DateTime DateTime { get; set; }
         public long UnixTime { get; set; }
-
     }
 }

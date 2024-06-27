@@ -4,7 +4,7 @@ namespace ImageProjectBackend.Models;
 
 public class ArchiveRequest
 {
-    public enum ArchiveStatus 
+    public enum ArchiveStatus
     {
         Failed = -1,
         Unknown,
@@ -18,11 +18,10 @@ public class ArchiveRequest
     public ArchiveStatus Status { get; set; } = ArchiveStatus.Unknown;
     public List<string> ExceptionMessages { get; set; } = new List<string>();
 
-    public void AddError(string message) 
+    public void AddError(string message)
     {
-        ExceptionMessages.Add(message);
-        Status = ArchiveStatus.Failed;
+        this.ExceptionMessages.Add(message);
+        this.Status = ArchiveStatus.Failed;
     }
 }
-
 

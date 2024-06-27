@@ -13,18 +13,20 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
 
     public Guid StartArchive(ArchiveRequest request)
     {
-        var jobId = Guid.NewGuid();
+        Guid jobId = Guid.NewGuid();
 
         while(!Jobs.TryAdd(jobId, request))
+        {
             jobId = Guid.NewGuid();
+        }
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {
-                await ProcessArchiveRequest(jobId);
+                await this.ProcessArchiveRequest(jobId);
             }
-            catch (Exception exception)
+            catch(Exception exception)
             {
                 request.Status = ArchiveRequest.ArchiveStatus.Failed;
                 request.AddError($"Processing failed: {exception.Message}");
@@ -37,61 +39,56 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
         return jobId;
     }
 
-    public ArchiveRequest GetJob(Guid jobId) 
+    public ArchiveRequest GetJob(Guid jobId)
     {
-        if(Jobs.TryGetValue(jobId, out var request))
-        {
-            return request;
-        }
-        else
-        {
-            throw new KeyNotFoundException($"No archive process found with ID: {jobId}");
-        }
+        return Jobs.TryGetValue(jobId, out ArchiveRequest? request)
+            ? request
+            : throw new KeyNotFoundException($"No archive process found with ID: {jobId}");
     }
 
-    public async Task ProcessArchiveRequest(Guid jobId) 
+    public async Task ProcessArchiveRequest(Guid jobId)
     {
         Stopwatch stopwatch = Stopwatch.StartNew(); //TODO: Remove benchmarking code
 
-        var request = Jobs[jobId];
+        ArchiveRequest request = Jobs[jobId];
 
         Jobs[jobId].Status = ArchiveRequest.ArchiveStatus.Processing;
 
-        using (var DbScope = DbScopeFactory.CreateScope())
+        using(IServiceScope DbScope = DbScopeFactory.CreateScope())
         {
-            var dbContext = DbScope.ServiceProvider.GetRequiredService<ImageDbContext>();
+            ImageDbContext dbContext = DbScope.ServiceProvider.GetRequiredService<ImageDbContext>();
 
-            var images = await dbContext.Images
+            List<Image> images = await dbContext.Images
                 .Where(i => i.DateTime >= request.StartDate && i.DateTime <= request.EndDate)
                 .ToListAsync();
 
-            var zipFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Archives", $"{jobId}.zip");
+            string zipFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Archives", $"{jobId}.zip");
 
-            var exceptions = new ConcurrentBag<Exception>();
+            ConcurrentBag<Exception> exceptions = new ConcurrentBag<Exception>();
 
-            using (FileStream zipToOpen = new FileStream(zipFilePath, FileMode.Create))
+            using(FileStream zipToOpen = new FileStream(zipFilePath, FileMode.Create))
             {
-                using (ZipArchive archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create))
+                using(ZipArchive archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create))
                 {
                     object archiveLock = new object();
 
-                    Parallel.ForEach(images, (image) =>
+                    _ = Parallel.ForEach(images, (image) =>
                     {
-                        var year = image.DateTime.Year;
-                        var month = $"{image.DateTime:MMM}";
-                        var day = $"{image.DateTime:dd}";
+                        int year = image.DateTime.Year;
+                        string month = $"{image.DateTime:MMM}";
+                        string day = $"{image.DateTime:dd}";
 
                         try
                         {
-                            if (File.Exists(image.FilePath))
+                            if(File.Exists(image.FilePath))
                             {
-                                lock (archiveLock)
+                                lock(archiveLock)
                                 {
                                     ZipArchiveEntry entry = archive.CreateEntry($"{year}/{month}/{day}/{day} {month} {year} {image.DateTime:hh.mmtt}.{Path.GetExtension(image.FilePath)}");
 
-                                    using (FileStream fileStream = new FileStream(image.FilePath, FileMode.Open, FileAccess.Read))
+                                    using(FileStream fileStream = new FileStream(image.FilePath, FileMode.Open, FileAccess.Read))
                                     {
-                                        using (Stream entryStream = entry.Open())
+                                        using(Stream entryStream = entry.Open())
                                         {
                                             fileStream.CopyTo(entryStream);
                                         }
@@ -104,21 +101,21 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                                 Console.WriteLine($"{image.FilePath} does not exist."); //TODO: Implement logging
                             }
                         }
-                        catch (Exception exception)
+                        catch(Exception exception)
                         {
                             exceptions.Add(exception);
                         }
                     });
 
-                    if (!exceptions.IsEmpty)
+                    if(!exceptions.IsEmpty)
                     {
-                        foreach (var exception in exceptions)
+                        foreach(Exception exception in exceptions)
                         {
                             Console.WriteLine($"Exception: {exception.Message}"); //TODO: Implement logging
 
                             request.AddError(exception.Message);
 
-                            request.Status = ArchiveRequest.ArchiveStatus.Failed;
+                            request.Status = ArchiveRequest.ArchiveStatus.Failed; //TODO: Determine if better to handle here or in AddError()
                         }
                     }
                 }
