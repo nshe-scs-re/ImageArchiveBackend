@@ -1,13 +1,16 @@
-@ImageProjectBackend_HostAddress = http://localhost:5084/api
+@host = https://localhost:7013
+@jobId = d1fc0735-64d6-4bdc-a857-1a45bcb7e222
 
-GET {{ImageProjectBackend_HostAddress}}/images/zip
-Accept: application/zip
+#Request an archive job
+POST {{host}}/api/archive/start
+Content-Type: application/json
+{
+  "StartDate": "2019-06-01",
+  "EndDate": "2024-01-01"
+}
 
-###
-GET {{ImageProjectBackend_HostAddress}}/images/zip?startDate=2010-01-01T00:00:00&endDate=2023-06-30T23:59:59
-Accept: application/zip
+### Request an archive job status
+GET {{host}}/api/archive/status/{{jobId}}
 
-
-###
-GET {{ImageProjectBackend_HostAddress}}/
-Accept: application/json
+### Download an archive
+GET {{host}}/api/archive/download/{{jobId}}

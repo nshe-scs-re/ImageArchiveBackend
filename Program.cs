@@ -1,7 +1,10 @@
 using ImageProjectBackend.Data;
 using ImageProjectBackend.Models;
 using ImageProjectBackend.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -45,13 +48,9 @@ app.MapPost("/api/archive/start", async (ArchiveManager manager, HttpContext con
         return Results.Problem("Error creating new archive job.");
     }
 
-    var result = new
-    {
-        JobId = jobId,
-        //TODO: Potentially return more information
-    };
+    ArchiveRequest job = manager.GetJob(jobId);
 
-    return Results.Ok(result);
+    return Results.Ok(job);
 });
 
 app.MapGet("/api/archive/status/{jobId}", (ArchiveManager manager, Guid jobId) =>
@@ -60,11 +59,27 @@ app.MapGet("/api/archive/status/{jobId}", (ArchiveManager manager, Guid jobId) =
     {
         ArchiveRequest job = manager.GetJob(jobId);
 
-        return Results.Ok(job.Status.ToString());
+        return Results.Ok(job);
     }
     catch(KeyNotFoundException exception)
     {
         return Results.NotFound(exception.Message);
+    }
+    catch(Exception exception)
+    {
+        return Results.Problem(exception.Message);
+    }
+});
+
+app.MapGet("/api/archive/download/{jobId}", (ArchiveManager manager, Guid jobId) =>
+{
+    try
+    {
+        string filePath = manager.GetFilePath(jobId);
+
+        FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+
+        return Results.File(fileStream, "application/zip", $"{jobId}.zip");
     }
     catch(Exception exception)
     {

@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.Eventing.Reader;
-
-namespace ImageProjectBackend.Models;
+﻿namespace ImageProjectBackend.Models;
 
 public class ArchiveRequest
 {
@@ -13,6 +11,7 @@ public class ArchiveRequest
         Processing,
         Completed
     }
+    public Guid JobId { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public ArchiveStatus Status { get; set; } = ArchiveStatus.Unknown;

@@ -20,6 +20,8 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
             jobId = Guid.NewGuid();
         }
 
+        Jobs[jobId].JobId = jobId;
+
         _ = Task.Run(async () =>
         {
             try
@@ -30,11 +32,8 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
             {
                 request.Status = ArchiveRequest.ArchiveStatus.Failed;
                 request.AddError($"Processing failed: {exception.Message}");
-                Console.WriteLine($"Error in ProcessArchiveRequest: {exception.Message}"); //TODO: Remove debug log
             }
         });
-
-        Console.WriteLine($"Archive job started with Job ID: {jobId}"); //TODO: Remove debug log
 
         return jobId;
     }
@@ -44,6 +43,27 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
         return Jobs.TryGetValue(jobId, out ArchiveRequest? request)
             ? request
             : throw new KeyNotFoundException($"No archive process found with ID: {jobId}");
+    }
+
+    public string GetFilePath(Guid jobId)
+    {
+        if(Jobs.TryGetValue(jobId, out ArchiveRequest? request))
+        {
+            if(request.Status is ArchiveRequest.ArchiveStatus.Completed)
+            {
+                string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Archives", $"{jobId}.zip");
+
+                return File.Exists(filePath) ? filePath : throw new FileNotFoundException("The file does not exist.");
+            }
+            else
+            {
+                throw new InvalidOperationException("The archiving process has not completed.");
+            }
+        }
+        else
+        {
+            throw new KeyNotFoundException($"No archive process found with ID: {jobId}");
+        }
     }
 
     public async Task ProcessArchiveRequest(Guid jobId)
@@ -94,6 +114,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                                         }
                                     }
                                 }
+
                                 Console.WriteLine($"{image.FilePath} added to zip."); //TODO: Remove debug statement
                             }
                             else
@@ -114,8 +135,6 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                             Console.WriteLine($"Exception: {exception.Message}"); //TODO: Implement logging
 
                             request.AddError(exception.Message);
-
-                            request.Status = ArchiveRequest.ArchiveStatus.Failed; //TODO: Determine if better to handle here or in AddError()
                         }
                     }
                 }
