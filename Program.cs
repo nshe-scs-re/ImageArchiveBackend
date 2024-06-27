@@ -33,19 +33,43 @@ app.MapPost("/api/archive/start", async (ArchiveManager manager, HttpContext con
 {
     var request = await context.Request.ReadFromJsonAsync<ArchiveRequest>();
 
-    if(request == null)
+    if (request == null)
     {
         return Results.BadRequest();
     }
 
-    var jobId = await Task.Run(() => manager.StartArchive(request));
+    var jobId = manager.StartArchive(request);
 
-    if(jobId == Guid.Empty)
+    if (jobId == Guid.Empty)
     {
         return Results.Problem("Error creating new archive job.");
     }
 
-    return Results.Ok(jobId);
+    var result = new
+    {
+        JobId = jobId,
+        //TODO: Potentially return more information
+    };
+
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/archive/status/{jobId}", (ArchiveManager manager, Guid jobId) =>
+{
+    try
+    {
+        var job = manager.GetJob(jobId);
+
+        return Results.Ok(job.Status.ToString());
+    }
+    catch (KeyNotFoundException exception)
+    {
+        return Results.NotFound(exception.Message);
+    }
+    catch (Exception exception)
+    {
+        return Results.Problem(exception.Message);
+    }
 });
 
 app.MapGet("/api/images", async (ImageDbContext dbContext) =>
