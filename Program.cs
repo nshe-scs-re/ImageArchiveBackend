@@ -1,10 +1,7 @@
 using ImageProjectBackend.Data;
 using ImageProjectBackend.Models;
 using ImageProjectBackend.Services;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.IO;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +33,8 @@ app.MapPost("/api/archive/start", async (ArchiveManager manager, HttpContext con
 {
     ArchiveRequest? request = await context.Request.ReadFromJsonAsync<ArchiveRequest>();
 
+    Console.WriteLine($"DEBUG: /api/archive/start hit: request: {request.StartDate} {request.EndDate}");
+
     if(request == null)
     {
         return Results.BadRequest();
@@ -50,7 +49,7 @@ app.MapPost("/api/archive/start", async (ArchiveManager manager, HttpContext con
 
     ArchiveRequest job = manager.GetJob(jobId);
 
-    return Results.Ok(job);
+    return Results.Ok(job); //TODO: 'Created' response?
 });
 
 app.MapGet("/api/archive/status/{jobId}", (ArchiveManager manager, Guid jobId) =>
@@ -101,6 +100,33 @@ app.MapGet("/api/images/filter", async (ImageDbContext dbContext, DateTime start
 
     //TODO: Implement null checking for images and return decision tree
     return Results.Ok(images);
+});
+
+app.MapGet("/api/images/paginated", async (ImageDbContext dbContext, DateTime startDate, DateTime endDate, int pageIndex, int pageSize) =>
+{
+    var images = await dbContext.Images
+        .Where(i => i.DateTime >= startDate && i.DateTime <= endDate)
+        .OrderBy(i => i.Id)
+        .Skip(pageIndex * pageSize)
+        .Take(pageSize)
+        //.Select(i => new {i.Id}) //return just Id
+        .ToListAsync();
+
+    return Results.Ok(images);
+});
+
+app.MapGet("/api/images/{id}", async (ImageDbContext dbContext, long id) =>
+{
+    var image = await dbContext.Images.FindAsync(id);
+
+    if(image is null)
+    {
+        return Results.NotFound();
+    }
+
+    var fileStream = new FileStream(image.FilePath, FileMode.Open, FileAccess.Read);
+
+    return Results.File(fileStream, "image/jpeg");
 });
 
 app.Run();

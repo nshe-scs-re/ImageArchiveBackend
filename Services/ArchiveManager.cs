@@ -57,7 +57,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
             }
             else
             {
-                throw new InvalidOperationException("The archiving process has not completed.");
+                throw new InvalidOperationException("The archiving process has not completed."); //TODO: Move scope of determining process status outside of this function
             }
         }
         else
@@ -68,6 +68,8 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
 
     public async Task ProcessArchiveRequest(Guid jobId)
     {
+        Console.WriteLine($"DEBUG: Archiving process started...");
+
         Stopwatch stopwatch = Stopwatch.StartNew(); //TODO: Remove benchmarking code
 
         ArchiveRequest request = Jobs[jobId];
@@ -115,7 +117,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                                     }
                                 }
 
-                                Console.WriteLine($"{image.FilePath} added to zip."); //TODO: Remove debug statement
+                                //Console.WriteLine($"{image.FilePath} added to zip."); //TODO: Remove debug statement
                             }
                             else
                             {
@@ -142,7 +144,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
 
             stopwatch.Stop(); //TODO: Remove benchmarking code
 
-            Console.WriteLine($"Elapsed Time: {stopwatch.Elapsed}"); //TODO: Remove benchmarking code
+            Console.WriteLine($"DEBUG: Archiving complete. Elapsed Time: {stopwatch.Elapsed}"); //TODO: Remove benchmarking code
 
             Jobs[jobId].Status = ArchiveRequest.ArchiveStatus.Completed;
         }

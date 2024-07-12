@@ -1,5 +1,6 @@
 @host = https://localhost:7013
-@jobId = d1fc0735-64d6-4bdc-a857-1a45bcb7e222
+@jobId = 25f9228f-605f-44fd-9b9a-c4f9980e3a8c
+@imageId = 1
 
 #Request an archive job
 POST {{host}}/api/archive/start
@@ -14,3 +15,9 @@ GET {{host}}/api/archive/status/{{jobId}}
 
 ### Download an archive
 GET {{host}}/api/archive/download/{{jobId}}
+
+###
+GET {{host}}/api/images/paginated?startDate=2010-01-01&endDate=2023-12-31&pageIndex=1&pageSize=8
+
+###
+GET {{host}}/api/images/{{imageId}}
