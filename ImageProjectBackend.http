@@ -1,5 +1,6 @@
-@host = https://localhost:7013
-@jobId = 25f9228f-605f-44fd-9b9a-c4f9980e3a8c
+# @host = https://localhost:7013
+@host = 
+@jobId = 
 @imageId = 1
 
 #Request an archive job
@@ -9,6 +10,10 @@ Content-Type: application/json
   "StartDate": "2019-06-01",
   "EndDate": "2024-01-01"
 }
+
+###
+GET {{host}}/api/archive/status/
+Content-Type: application/json
 
 ### Request an archive job status
 GET {{host}}/api/archive/status/{{jobId}}

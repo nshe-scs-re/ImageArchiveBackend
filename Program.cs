@@ -5,7 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSqlServer<ImageDbContext>(builder.Configuration.GetConnectionString("ImageDatabase"));
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
+
+Console.WriteLine(builder.Configuration.GetConnectionString("ImageDb"));
+builder.Services.AddSqlServer<ImageDbContext>(builder.Configuration.GetConnectionString("ImageDb"));
 
 builder.Services.AddScoped<ArchiveManager>();
 
@@ -126,7 +131,7 @@ app.MapGet("/api/images/{id}", async (ImageDbContext dbContext, long id) =>
 
     var fileStream = new FileStream(image.FilePath, FileMode.Open, FileAccess.Read);
 
-    return Results.File(fileStream, "image/jpeg");
+    return Results.File(fileStream, "image/jpeg"); //TODO: Other image extensions
 });
 
 app.Run();

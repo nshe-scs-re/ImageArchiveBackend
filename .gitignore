@@ -367,4 +367,3 @@ Archives/
 *.tar
 /appsettings.Production.json
 /appsettings.Development.json
-/appsettings.Development.json
