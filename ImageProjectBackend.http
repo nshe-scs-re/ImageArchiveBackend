@@ -1,9 +1,8 @@
-# @host = https://localhost:7013
-@host = 
+@host = https://localhost:9443
 @jobId = 
 @imageId = 1
 
-#Request an archive job
+### Request an archive job
 POST {{host}}/api/archive/start
 Content-Type: application/json
 {
@@ -11,18 +10,14 @@ Content-Type: application/json
   "EndDate": "2024-01-01"
 }
 
-###
-GET {{host}}/api/archive/status/
-Content-Type: application/json
-
 ### Request an archive job status
 GET {{host}}/api/archive/status/{{jobId}}
 
 ### Download an archive
 GET {{host}}/api/archive/download/{{jobId}}
 
-###
+### Paginated test point
 GET {{host}}/api/images/paginated?startDate=2010-01-01&endDate=2023-12-31&pageIndex=1&pageSize=8
 
-###
+### Single image test point
 GET {{host}}/api/images/{{imageId}}
