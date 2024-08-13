@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ImageProjectBackend.Models;
+﻿using ImageProjectBackend.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ImageProjectBackend.Data
 {
