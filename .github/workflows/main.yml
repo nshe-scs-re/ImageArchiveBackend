@@ -1,0 +1,36 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - main
+env:
+  SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, project-runner]
+    container:
+      image: python:3.11-slim
+      options: --rm --volume /home/actions-runner/tmp:/input
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Ansible
+        uses: nshe-scs-re/nshe-shared-actions/docker-build@main
+        with:
+          ssh_key: ${{ secrets.DOCKER_BUILD_SSH }}
+          vm_name: image-archive-api.re.nevada.internal
+          container_name: image-archive-api
+          docker_registry_username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          docker_registry_password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          docker_run_cli_args: |
+            --privileged \
+            --device /dev/vda:/dev/vda \
+            -v /mnt/nvme0n1:/mnt/nvme0n1 \
+            -e ASPNETCORE_URLS="https://+;http://+" \
+            -e ASPNETCORE_HTTPS_PORTS=$HTTPS_PORT \
+            -e ASPNETCORE_Kestrel__Certificates__Default__Password=${{ secrets.PFX_PASSWORD }} \
+            -e ASPNETCORE_Kestrel__Certificates__Default__Path=/https/mycertificate.pfx \
+            -v $PFX_PATH:/https/mycertificate.pfx
