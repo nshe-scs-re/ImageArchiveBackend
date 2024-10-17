@@ -362,8 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Archives
+# Other
 Archives/
 *.tar
-/appsettings.Production.json
-/appsettings.Development.json
+*.sh
+*.crt
+appsettings.Production.json
+appsettings.Development.json

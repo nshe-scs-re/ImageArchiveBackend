@@ -3,42 +3,72 @@ using ImageProjectBackend.Models;
 using ImageProjectBackend.Services;
 using Microsoft.EntityFrameworkCore;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
+//TODO: remove appsettings dependency and move secrets to GitHub secrets or env variables
+builder.Configuration.AddJsonFile("Properties/appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"Properties/appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
+//Console.WriteLine($"DEBUG [Program.cs]: Connection string is: {builder.Configuration.GetConnectionString("ImageDb")}"); //TODO: Use GitHub secrets and/or environment variable
 
-Console.WriteLine(builder.Configuration.GetConnectionString("ImageDb"));
 builder.Services.AddSqlServer<ImageDbContext>(builder.Configuration.GetConnectionString("ImageDb"));
 
 builder.Services.AddScoped<ArchiveManager>();
 
-builder.Services.AddAntiforgery();
+builder.Services.AddAntiforgery(); //TODO: Configure antiforgery options
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        _ = builder.WithOrigins("https://localhost:7233")
+        //TODO: Look into further configuration options for added security
+        //builder.AllowAnyOrigin()
+        builder.WithOrigins("10.176.244.111")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
+
 });
 
-WebApplication app = builder.Build();
+var app = builder.Build();
+
+app.UseCors();
 
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
-app.UseCors();
+app.MapGet("/api/db-verify", async(ImageDbContext dbContext) =>
+{
+    try
+    {
+        var canConnect = await dbContext.Database.CanConnectAsync();
+        if(canConnect)
+        {
+            Console.WriteLine($"DEBUG [Program.cs] [/db-verify]: Database connection succeded!");
+            return Results.Ok("Database connection succeeded.");
+        }
+        else
+        {
+            Console.WriteLine($"DEBUG [Program.cs] [/db-verify]: Database connection failed.");
+            return Results.Problem("Database connection failed.");
+        }
+    }
+    catch(Exception ex)
+    {
+        Console.WriteLine($"DEBUG [Program.cs] [/db-verify]: Database connection failed - {ex.Message}");
+        return Results.Problem("Database connection failed.");
+    }
+});
 
 app.MapPost("/api/archive/start", async (ArchiveManager manager, HttpContext context) =>
 {
+    // TODO: try-catch wrapper
+
     ArchiveRequest? request = await context.Request.ReadFromJsonAsync<ArchiveRequest>();
 
-    Console.WriteLine($"DEBUG: /api/archive/start hit: request: {request.StartDate} {request.EndDate}");
+    Console.WriteLine($"DEBUG [Program.cs] [/api/archive/start]: endpoint hit: request: {request.StartDate} {request.EndDate}");
 
     if(request == null)
     {
@@ -93,6 +123,7 @@ app.MapGet("/api/archive/download/{jobId}", (ArchiveManager manager, Guid jobId)
 
 app.MapGet("/api/images", async (ImageDbContext dbContext) =>
 {
+    //TODO try-catch wrapper
     List<Image> images = await dbContext.Images.ToListAsync();
 
     //TODO: Implement null checking for images and return decision tree
@@ -101,6 +132,7 @@ app.MapGet("/api/images", async (ImageDbContext dbContext) =>
 
 app.MapGet("/api/images/filter", async (ImageDbContext dbContext, DateTime startDate, DateTime endDate) =>
 {
+    //TODO: try-catch wrapper
     List<Image> images = await dbContext.Images.Where(i => i.DateTime >= startDate && i.DateTime <= endDate).ToListAsync();
 
     //TODO: Implement null checking for images and return decision tree
@@ -109,6 +141,7 @@ app.MapGet("/api/images/filter", async (ImageDbContext dbContext, DateTime start
 
 app.MapGet("/api/images/paginated", async (ImageDbContext dbContext, DateTime startDate, DateTime endDate, int pageIndex, int pageSize) =>
 {
+    //TODO: try-catch wrapper
     var images = await dbContext.Images
         .Where(i => i.DateTime >= startDate && i.DateTime <= endDate)
         .OrderBy(i => i.Id)
@@ -122,16 +155,40 @@ app.MapGet("/api/images/paginated", async (ImageDbContext dbContext, DateTime st
 
 app.MapGet("/api/images/{id}", async (ImageDbContext dbContext, long id) =>
 {
-    var image = await dbContext.Images.FindAsync(id);
-
-    if(image is null)
+    try
     {
-        return Results.NotFound();
+        var image = await dbContext.Images.FindAsync(id);
+        if(image is null)
+        {
+            Console.WriteLine($"DEBUG [Program.cs] [/api/images/id]: image is null.");
+            return Results.NotFound();
+        }
+        try
+        {
+            var fileStream = new FileStream(image.FilePath!, FileMode.Open, FileAccess.Read);
+            string extension = Path.GetExtension(image.FilePath)!.ToLowerInvariant();
+            string mimeType = extension switch
+            {
+                ".jpeg" or ".jpg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
+
+            return Results.File(fileStream, mimeType);
+        }
+        catch(Exception exception)
+        {
+            Console.WriteLine($"ERROR [Program.cs] [/api/images/id]: Exception message: {exception.Message}");
+            return Results.Problem(exception.Message);
+        }
+
     }
-
-    var fileStream = new FileStream(image.FilePath, FileMode.Open, FileAccess.Read);
-
-    return Results.File(fileStream, "image/jpeg"); //TODO: Other image extensions
+    catch(Exception exception)
+    {
+        Console.WriteLine($"ERROR [Program.cs] [/api/images/id]: Outer catch hit. Exception message: {exception.Message}");
+        throw;
+    }
 });
 
 app.Run();

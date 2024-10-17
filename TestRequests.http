@@ -1,0 +1,27 @@
+@host = https://image-archive.re.nevada.net
+@jobId = 
+@imageId = 1
+@startDate = 2019-01-01
+@endDate = 2024-01-01
+@pageIndex = 1
+@pageSize = 9
+
+# Request an archive job
+POST {{host}}/api/archive/start
+Content-Type: application/json
+{
+  "StartDate": "2019-06-01",
+  "EndDate": "2024-01-01"
+}
+
+### Request an archive job status
+GET {{host}}/api/archive/status/{{jobId}}
+
+### Download an archive
+GET {{host}}/api/archive/download/{{jobId}}
+
+### Paginated test point
+GET {{host}}/api/images/paginated?startDate={{startDate}}&endDate={{endDate}}&pageIndex={{pageIndex}}&pageSize={{pageSize}}
+
+### Single image test point
+GET {{host}}/api/images/{{imageId}}

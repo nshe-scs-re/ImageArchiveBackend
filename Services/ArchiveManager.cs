@@ -22,7 +22,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
 
         Jobs[jobId].JobId = jobId;
 
-        _ = Task.Run(async () =>
+        Task.Run(async () =>
         {
             try
             {
@@ -68,9 +68,9 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
 
     public async Task ProcessArchiveRequest(Guid jobId)
     {
-        Console.WriteLine($"DEBUG: Archiving process started...");
+        //Console.WriteLine($"DEBUG [ArchiveManager.cs] [ProcessArchiveRequest]: Archiving process started...");
 
-        Stopwatch stopwatch = Stopwatch.StartNew(); //TODO: Remove benchmarking code
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
         ArchiveRequest request = Jobs[jobId];
 
@@ -83,7 +83,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
             List<Image> images = await dbContext.Images
                 .Where(i => i.DateTime >= request.StartDate && i.DateTime <= request.EndDate)
                 .ToListAsync();
-
+                
             string zipFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Archives", $"{jobId}.zip");
 
             ConcurrentBag<Exception> exceptions = new ConcurrentBag<Exception>();
@@ -94,7 +94,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                 {
                     object archiveLock = new object();
 
-                    _ = Parallel.ForEach(images, (image) =>
+                    Parallel.ForEach(images, (image) =>
                     {
                         int year = image.DateTime.Year;
                         string month = $"{image.DateTime:MMM}";
@@ -117,11 +117,10 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                                     }
                                 }
 
-                                //Console.WriteLine($"{image.FilePath} added to zip."); //TODO: Remove debug statement
                             }
                             else
                             {
-                                Console.WriteLine($"{image.FilePath} does not exist."); //TODO: Implement logging
+                                Console.WriteLine($"DEBUG [ArchiveManager.cs]: {image.FilePath} does not exist."); //TODO: Implement logging
                             }
                         }
                         catch(Exception exception)
@@ -134,7 +133,7 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                     {
                         foreach(Exception exception in exceptions)
                         {
-                            Console.WriteLine($"Exception: {exception.Message}"); //TODO: Implement logging
+                            Console.WriteLine($"DEBUG [ArchiveManager.cs]: Exception: {exception.Message}"); //TODO: Implement logging
 
                             request.AddError(exception.Message);
                         }
@@ -142,9 +141,9 @@ public class ArchiveManager(IServiceScopeFactory DbScopeFactory)
                 }
             }
 
-            stopwatch.Stop(); //TODO: Remove benchmarking code
+            stopwatch.Stop();
 
-            Console.WriteLine($"DEBUG: Archiving complete. Elapsed Time: {stopwatch.Elapsed}"); //TODO: Remove benchmarking code
+            Console.WriteLine($"DEBUG: Archiving complete. Elapsed Time: {stopwatch.Elapsed}");
 
             Jobs[jobId].Status = ArchiveRequest.ArchiveStatus.Completed;
         }
